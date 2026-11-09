@@ -1,0 +1,20 @@
+{
+  "name": "beceko-ledger",
+  "version": "1.0.3",
+  "private": true,
+  "description": "Customer and money ledger for Beceko",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file=.env src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file=.env --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "check-gemini": "node --env-file=.env scripts/check-gemini.js"
+  },
+  "dependencies": {
+    "@google/genai": "^3.0.0",
+    "express": "^5.3.0"
+  }
+}

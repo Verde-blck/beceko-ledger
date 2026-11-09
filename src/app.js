@@ -1,0 +1,114 @@
+import express from 'express';
+import { fileURLToPath } from 'node:url';
+import { HttpError } from './errors.js';
+import { geminiErrorDetail, quickEntryProblem } from './extract.js';
+import { localTimestamp } from './time.js';
+
+const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
+const MAX_NOTE = 1000;
+
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "style-src 'self' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+function securityHeaders(req, res, next) {
+  res.set({
+    'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'same-origin',
+  });
+  next();
+}
+
+function idParam(req) {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(404, 'Not found.');
+  return id;
+}
+
+function errorHandler(error, req, res, next) {
+  if (res.headersSent) return next(error);
+  if (error instanceof HttpError) return res.status(error.status).json({ error: error.message });
+  if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'The request is not valid JSON.' });
+  if (error.type === 'entity.too.large') return res.status(413).json({ error: 'The request is too large.' });
+  console.error(error);
+  res.status(500).json({ error: 'Something went wrong on the server. Try again.' });
+}
+
+export function createApp({ config, store, auth, extract }) {
+  const app = express();
+  if (config.trustProxy) app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
+  app.use(express.json({ limit: '64kb' }));
+  app.use(express.static(PUBLIC_DIR));
+
+  app.get('/api/session', (req, res) => {
+    res.json({
+      authenticated: auth.isSignedIn(req),
+      aiEnabled: Boolean(extract),
+      businessName: config.businessName,
+    });
+  });
+
+  app.post('/api/session', (req, res) => {
+    auth.signIn(req, res, req.body?.pin);
+    res.status(204).end();
+  });
+
+  app.delete('/api/session', (req, res) => {
+    auth.signOut(res);
+    res.status(204).end();
+  });
+
+  app.use('/api', auth.requireSignIn);
+
+  app.get('/api/summary', (req, res) => res.json(store.summary()));
+
+  app.get('/api/customers', (req, res) => res.json({ customers: store.listCustomers() }));
+
+  app.post('/api/customers', (req, res) => res.status(201).json(store.createCustomer(req.body ?? {})));
+
+  app.get('/api/customers/:id', (req, res) => res.json(store.getCustomer(idParam(req))));
+
+  app.patch('/api/customers/:id', (req, res) => res.json(store.updateCustomer(idParam(req), req.body ?? {})));
+
+  app.post('/api/entries', (req, res) => res.status(201).json({ ids: store.addEntries(req.body?.entries) }));
+
+  app.post('/api/entries/:id/void', (req, res) => res.status(201).json(store.voidEntry(idParam(req))));
+
+  app.post('/api/parse', async (req, res) => {
+    if (!extract) throw new HttpError(503, 'Quick entry is not set up on this server.');
+    const text = String(req.body?.text ?? '').trim();
+    if (!text) throw new HttpError(400, 'Type or say what happened first.');
+    if (text.length > MAX_NOTE) throw new HttpError(400, 'That is too long. Record one or two things at a time.');
+
+    const customers = store.customerNames();
+    let events;
+    try {
+      events = await extract(text, customers);
+    } catch (error) {
+      const { status, message } = geminiErrorDetail(error);
+      console.error(`Gemini request failed${status ? ` (${status})` : ''}: ${message}`);
+      throw new HttpError(502, quickEntryProblem(error));
+    }
+    res.json({ drafts: store.draftsFrom(events, text), customers });
+  });
+
+  app.get('/api/export.csv', (req, res) => {
+    const date = localTimestamp(config.timeZone).slice(0, 10);
+    res.attachment(`beceko-ledger-${date}.csv`).send(store.exportCsv());
+  });
+
+  app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));
+  app.use(errorHandler);
+
+  return app;
+}
