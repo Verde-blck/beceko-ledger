@@ -16,8 +16,7 @@
   function apply(theme) {
     if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', COLOURS[current()]);
-    const button = document.getElementById('theme-toggle');
-    if (button) button.textContent = current() === 'dark' ? 'Light mode' : 'Dark mode';
+    document.getElementById('theme-toggle')?.setAttribute('aria-checked', String(current() === 'dark'));
   }
 
   apply(saved());

@@ -35,7 +35,7 @@ It sends a test note through the same request quick entry uses and shows how Gem
 
 ## Light and dark mode
 
-The app follows the phone's own setting until someone taps "Dark mode" or "Light mode" at the top. That choice is then remembered on that phone.
+The app follows the phone's own setting until someone uses the sun and moon switch at the top. That choice is then remembered on that phone.
 
 ## Calendar
 
