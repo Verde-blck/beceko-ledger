@@ -13,6 +13,9 @@ export function loadConfig(env = process.env) {
   } catch {
     problems.push(`LEDGER_TIME_ZONE "${timeZone}" is not a valid time zone.`);
   }
+  if (env.RESET_LEDGER && !/^[A-Za-z0-9-]{8,64}$/.test(env.RESET_LEDGER)) {
+    problems.push('RESET_LEDGER must be 8 to 64 letters, digits or hyphens, for example fresh-start-1.');
+  }
   if (problems.length > 0) {
     throw new Error(`Cannot start Beceko Ledger:\n${problems.join('\n')}`);
   }
@@ -26,6 +29,7 @@ export function loadConfig(env = process.env) {
     databaseFile: env.DATABASE_FILE || 'data/ledger.db',
     timeZone,
     businessName: env.BUSINESS_NAME || 'Beceko',
+    resetToken: env.RESET_LEDGER || '',
     geminiApiKey: env.GEMINI_API_KEY || '',
     geminiModel: env.GEMINI_MODEL || 'gemini-flash-latest',
   };

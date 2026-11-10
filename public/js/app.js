@@ -1,5 +1,6 @@
 import { api, ApiError } from './api.js';
 import { html, mount } from './dom.js';
+import { renderCalendar } from './views/calendar.js';
 import { renderCustomer } from './views/customer.js';
 import { renderCustomers } from './views/customers.js';
 import { renderHome } from './views/home.js';
@@ -11,12 +12,17 @@ const toastBox = document.getElementById('toast');
 const routes = [
   { pattern: /^#\/customers\/(\d+)$/, view: renderCustomer, tab: 'customers' },
   { pattern: /^#\/customers$/, view: renderCustomers, tab: 'customers' },
+  { pattern: /^#\/calendar(?:\/(\d{4}-\d{2})(?:-(\d{2}))?)?$/, view: renderCalendar, tab: 'calendar' },
   { pattern: /^(#\/?)?$/, view: renderHome, tab: 'home' },
 ];
 
 let session = { authenticated: false };
 let renderId = 0;
 let toastTimer;
+let sameSection = false;
+let lastHash = location.hash;
+
+const sectionOf = (hash) => hash.match(/^#\/(\w+)/)?.[1] ?? 'home';
 
 function toast(message) {
   toastBox.textContent = message;
@@ -51,7 +57,7 @@ async function route() {
     else link.removeAttribute('aria-current');
   }
 
-  const ctx = { session, toast, refresh: route, current: () => id === renderId };
+  const ctx = { session, toast, sameSection, refresh: route, current: () => id === renderId };
   try {
     await match.view(main, ctx, ...location.hash.match(match.pattern).slice(1));
   } catch (error) {
@@ -72,8 +78,12 @@ document.getElementById('sign-out').addEventListener('click', async () => {
 });
 
 window.addEventListener('hashchange', () => {
-  window.scrollTo(0, 0);
-  main.focus({ preventScroll: true });
+  sameSection = sectionOf(location.hash) === 'calendar' && sectionOf(lastHash) === 'calendar';
+  lastHash = location.hash;
+  if (!sameSection) {
+    window.scrollTo(0, 0);
+    main.focus({ preventScroll: true });
+  }
   route();
 });
 

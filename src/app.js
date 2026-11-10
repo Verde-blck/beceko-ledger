@@ -2,7 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './errors.js';
 import { geminiErrorDetail, quickEntryProblem } from './extract.js';
-import { localTimestamp } from './time.js';
+import { isValidDate, isValidMonth, localTimestamp } from './time.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 const MAX_NOTE = 1000;
@@ -79,6 +79,18 @@ export function createApp({ config, store, auth, extract }) {
   app.get('/api/customers/:id', (req, res) => res.json(store.getCustomer(idParam(req))));
 
   app.patch('/api/customers/:id', (req, res) => res.json(store.updateCustomer(idParam(req), req.body ?? {})));
+
+  app.get('/api/calendar', (req, res) => res.json(store.month()));
+
+  app.get('/api/calendar/:month', (req, res) => {
+    if (!isValidMonth(req.params.month)) throw new HttpError(404, 'Not found.');
+    res.json(store.month(req.params.month));
+  });
+
+  app.get('/api/days/:date', (req, res) => {
+    if (!isValidDate(req.params.date)) throw new HttpError(404, 'Not found.');
+    res.json(store.day(req.params.date));
+  });
 
   app.post('/api/entries', (req, res) => res.status(201).json({ ids: store.addEntries(req.body?.entries) }));
 

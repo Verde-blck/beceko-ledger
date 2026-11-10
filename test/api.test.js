@@ -111,3 +111,14 @@ test('a retired Gemini model gives a clear message', async (t) => {
   assert.equal(response.status, 502);
   assert.match(response.data.error, /no longer available/);
 });
+
+test('calendar endpoints reject malformed dates', async (t) => {
+  const call = await start(t);
+  await call('/session', { method: 'POST', body: { pin: '2468' } });
+  assert.equal((await call('/calendar/2026-13')).status, 404);
+  assert.equal((await call('/days/2026-02-30')).status, 404);
+  const month = await call('/calendar');
+  assert.equal(month.status, 200);
+  assert.match(month.data.month, /^\d{4}-\d{2}$/);
+  assert.equal((await call(`/days/${month.data.today}`)).status, 200);
+});

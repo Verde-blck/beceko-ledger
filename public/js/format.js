@@ -95,3 +95,32 @@ export function whatsappLink(phone, message) {
   if (digits.length === 11 && digits.startsWith('0')) digits = `234${digits.slice(1)}`;
   return digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : null;
 }
+
+const COMPACT = new Intl.NumberFormat('en-NG', {
+  style: 'currency',
+  currency: 'NGN',
+  notation: 'compact',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+
+export const nairaCompact = (kobo) => COMPACT.format((kobo || 0) / 100);
+
+const utcDate = (date) => {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day || 1));
+};
+
+export const longDate = (date) =>
+  utcDate(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+export const monthTitle = (month) =>
+  utcDate(month).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+export const monthName = (month) => utcDate(month).toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
+
+export function shiftMonth(month, by) {
+  const date = utcDate(month);
+  date.setUTCMonth(date.getUTCMonth() + by);
+  return date.toISOString().slice(0, 7);
+}

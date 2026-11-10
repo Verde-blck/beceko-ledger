@@ -28,6 +28,28 @@ export function localTimestamp(timeZone, date = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
+const pad = (number) => String(number).padStart(2, '0');
+
+export const isValidMonth = (value) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+
+export function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+export function nextDay(date) {
+  const [year, month, day] = date.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  return `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`;
+}
+
+export function nextMonth(month) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  return monthNumber === 12 ? `${year + 1}-01` : `${year}-${pad(monthNumber + 1)}`;
+}
+
 export function periodStarts(timeZone, date = new Date()) {
   const today = localTimestamp(timeZone, date).slice(0, 10);
   const [year, month, day] = today.split('-').map(Number);

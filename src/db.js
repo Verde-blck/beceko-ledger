@@ -27,6 +27,11 @@ const SCHEMA = `
     CHECK ((kind = 'VOID') = (voids_entry_id IS NOT NULL))
   );
 
+  CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS entries_by_customer ON entries (customer_id, id);
   CREATE INDEX IF NOT EXISTS entries_by_date ON entries (created_at);
 

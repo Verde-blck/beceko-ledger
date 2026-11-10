@@ -2,7 +2,7 @@ import { toCsv } from './csv.js';
 import { isUniqueViolation, transaction } from './db.js';
 import { HttpError } from './errors.js';
 import { checkNewEntry, cleanName, nairaToKobo, nameKey, statusFor, withRunningBalance } from './ledger.js';
-import { localTimestamp, periodStarts } from './time.js';
+import { localTimestamp, nextDay, nextMonth, periodStarts } from './time.js';
 
 const MAX_NAME = 80;
 const MAX_PHONE = 30;
@@ -71,6 +71,18 @@ export function createStore(db, { timeZone }) {
       SELECT ${ENTRY_COLUMNS}, c.name AS customerName
       FROM entries e JOIN customers c ON c.id = e.customer_id
       ORDER BY e.id DESC LIMIT ?`),
+    dayTotals: db.prepare(`
+      SELECT substr(created_at, 1, 10) AS date,
+        COALESCE(SUM(paid_kobo), 0) AS receivedKobo,
+        COALESCE(SUM(cost_kobo), 0) AS salesKobo,
+        COUNT(*) AS entryCount
+      FROM entries WHERE created_at >= ? AND created_at < ?
+      GROUP BY date ORDER BY date`),
+    entriesBetween: db.prepare(`
+      SELECT ${ENTRY_COLUMNS}, c.name AS customerName
+      FROM entries e JOIN customers c ON c.id = e.customer_id
+      WHERE e.created_at >= ? AND e.created_at < ?
+      ORDER BY e.id`),
     allEntries: db.prepare(`
       SELECT ${ENTRY_COLUMNS}, c.name AS customerName
       FROM entries e JOIN customers c ON c.id = e.customer_id
@@ -193,6 +205,27 @@ export function createStore(db, { timeZone }) {
         salesMonthKobo: month.cost,
         topOwing: owing.slice(0, 5),
         recent: sql.recent.all(8).map((row) => ({ ...row })),
+      };
+    },
+
+    month(month = periodStarts(timeZone).today.slice(0, 7)) {
+      const days = sql.dayTotals.all(`${month}-01`, `${nextMonth(month)}-01`).map((row) => ({ ...row }));
+      return {
+        month,
+        today: periodStarts(timeZone).today,
+        receivedKobo: days.reduce((sum, day) => sum + day.receivedKobo, 0),
+        salesKobo: days.reduce((sum, day) => sum + day.salesKobo, 0),
+        days,
+      };
+    },
+
+    day(date) {
+      const entries = sql.entriesBetween.all(date, nextDay(date)).map((row) => ({ ...row }));
+      return {
+        date,
+        receivedKobo: entries.reduce((sum, entry) => sum + entry.paidKobo, 0),
+        salesKobo: entries.reduce((sum, entry) => sum + entry.costKobo, 0),
+        entries,
       };
     },
 

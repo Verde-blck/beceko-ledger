@@ -1,6 +1,6 @@
 {
   "name": "beceko-ledger",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "description": "Customer and money ledger for Beceko",
   "type": "module",

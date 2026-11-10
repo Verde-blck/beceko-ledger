@@ -33,6 +33,14 @@ npm run check-gemini
 
 It sends a test note through the same request quick entry uses and shows how Gemini read it. If the model in `GEMINI_MODEL` does not work, it tries the newest Flash models your key can use and tells you which one to put in `.env`.
 
+## Light and dark mode
+
+The app follows the phone's own setting until someone taps "Dark mode" or "Light mode" at the top. That choice is then remembered on that phone.
+
+## Calendar
+
+The Calendar tab shows how much was received on each day of the month. Tap a day to see who paid, what was sold and at what time. Days are based on when entries were recorded.
+
 ## How the money is kept
 
 Amounts are stored in kobo as whole numbers, so balances never drift. Entries cannot be edited or deleted; the database itself refuses. To fix a mistake, use "Cancel entry" on the customer's page. That adds a cancelling line, crosses out the original and corrects the balance, so the full history stays readable.
@@ -42,6 +50,16 @@ Amounts are stored in kobo as whole numbers, so balances never drift. Entries ca
 Any host that runs Node and keeps files on disk between restarts will do: a small VPS, or a platform such as Railway, Render or Fly with a persistent volume. Hosts without a persistent disk will lose the data on restart.
 
 Serve it over HTTPS and set `COOKIE_SECURE=true` and `TRUST_PROXY=true`.
+
+## Starting with a clean ledger
+
+There is no button for this in the app, so it can't be done by accident. To clear every customer and entry, for example after testing:
+
+1. Add a variable `RESET_LEDGER` with any value of 8 to 64 letters, digits or hyphens, such as `RESET_LEDGER=fresh-start-1`. On Railway, add it in the service's Variables tab; locally, add it to `.env`.
+2. Deploy or restart. The log will say the ledger was cleared and where the old copy was saved (next to the database, for example `/data/ledger-before-reset-202611101200.db`).
+3. Remove the variable.
+
+Leaving the variable set does nothing more, because a value is only ever used once. To clear the ledger again in future, use a new value.
 
 ## Backups
 

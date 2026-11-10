@@ -1,8 +1,8 @@
 import { createApp } from './app.js';
 import { createAuth } from './auth.js';
 import { loadConfig } from './config.js';
-import { openDatabase } from './db.js';
 import { createExtractor } from './extract.js';
+import { openLedger } from './reset.js';
 import { createStore } from './store.js';
 
 let config;
@@ -13,7 +13,14 @@ try {
   process.exit(1);
 }
 
-const db = openDatabase(config.databaseFile);
+const { db, reset } = openLedger(config.databaseFile, config);
+
+if (reset?.done) {
+  console.log(`RESET_LEDGER: all customers and entries were cleared. The old ledger was saved to ${reset.backup}.`);
+  console.log('Remove RESET_LEDGER from the variables now. Leaving it set does nothing further.');
+} else if (reset) {
+  console.log('RESET_LEDGER is still set, but that reset has already been done. Remove the variable.');
+}
 
 const app = createApp({
   config,

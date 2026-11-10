@@ -3,25 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#fbfcfe" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1422" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fbfcfe">
   <title>Beceko Ledger</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&display=swap">
+  <script src="/js/theme.js"></script>
   <link rel="stylesheet" href="/styles.css">
   <script type="module" src="/js/app.js"></script>
 </head>
 <body class="signed-out">
   <header class="topbar">
     <a class="wordmark" href="#/">Beceko Ledger</a>
-    <button class="text-button" id="sign-out" type="button">Sign out</button>
+    <div class="topbar-actions">
+      <button class="text-button" id="theme-toggle" type="button">Dark mode</button>
+      <button class="text-button" id="sign-out" type="button">Sign out</button>
+    </div>
   </header>
   <main id="view" tabindex="-1"></main>
   <nav class="tabs" aria-label="Main">
     <a href="#/" data-tab="home">Home</a>
     <a href="#/customers" data-tab="customers">Customers</a>
+    <a href="#/calendar" data-tab="calendar">Calendar</a>
   </nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
