@@ -33,6 +33,15 @@ npm run check-gemini
 
 It sends a test note through the same request quick entry uses and shows how Gemini read it. If the model in `GEMINI_MODEL` does not work, it tries the newest Flash models your key can use and tells you which one to put in `.env`.
 
+## Adding it to the home screen
+
+The app has its own icon, made from the Beceko logo, and opens full screen without the browser bar.
+
+- Android (Chrome): open the link, tap the menu, then "Add to home screen" or "Install app".
+- iPhone (Safari): open the link, tap Share, then "Add to Home Screen".
+
+Sign in once inside the home-screen version. If a shortcut was added before the icon existed, remove it and add it again, because phones keep the old icon.
+
 ## Light and dark mode
 
 The app follows the phone's own setting until someone uses the sun and moon switch at the top. That choice is then remembered on that phone.
