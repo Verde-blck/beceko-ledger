@@ -1,7 +1,7 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './errors.js';
-import { geminiErrorDetail, quickEntryProblem } from './extract.js';
+import { aiErrorDetail, quickEntryProblem } from './extract.js';
 import { isValidDate, isValidMonth, localTimestamp } from './time.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
@@ -26,6 +26,14 @@ function securityHeaders(req, res, next) {
   });
   next();
 }
+
+const fileSlug = (name) =>
+  name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'customer';
 
 function idParam(req) {
   const id = Number(req.params.id);
@@ -107,8 +115,8 @@ export function createApp({ config, store, auth, extract }) {
     try {
       events = await extract(text, customers);
     } catch (error) {
-      const { status, message } = geminiErrorDetail(error);
-      console.error(`Gemini request failed${status ? ` (${status})` : ''}: ${message}`);
+      const { status, message } = aiErrorDetail(error);
+      console.error(`AI request failed${status ? ` (${status})` : ''}: ${message}`);
       throw new HttpError(502, quickEntryProblem(error));
     }
     res.json({ drafts: store.draftsFrom(events, text), customers });
@@ -117,6 +125,12 @@ export function createApp({ config, store, auth, extract }) {
   app.get('/api/export.csv', (req, res) => {
     const date = localTimestamp(config.timeZone).slice(0, 10);
     res.attachment(`beceko-ledger-${date}.csv`).send(store.exportCsv());
+  });
+
+  app.get('/api/customers/:id/export.csv', (req, res) => {
+    const { customer, csv } = store.exportCustomerCsv(idParam(req));
+    const date = localTimestamp(config.timeZone).slice(0, 10);
+    res.attachment(`beceko-${fileSlug(customer.name)}-${date}.csv`).send(csv);
   });
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found.' }));

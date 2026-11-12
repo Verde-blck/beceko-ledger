@@ -94,3 +94,23 @@ test('csv export keeps running balances and blocks spreadsheet formulas', () => 
   assert.equal(lines.length, 2);
   assert.match(lines[1], /,"'=HYPERLINK\(""x""\)",Sale,Lace,10000\.5,0,10000\.5,,$/);
 });
+
+test('one customer’s records can be exported on their own', () => {
+  const { store } = setup();
+  const { id } = store.createCustomer({ name: 'Mama Chidi' });
+  store.addEntries([{ customerId: id, kind: 'SALE', description: 'Lace sewing', costKobo: 1_500_000, paidKobo: 500_000, sourceText: 'lace, 15k, gave 5k' }]);
+  const [paymentId] = store.addEntries([{ customerId: id, kind: 'PAYMENT', paidKobo: 300_000 }]);
+  store.voidEntry(paymentId);
+  store.addEntries([{ customerName: 'Iya Bisi', kind: 'SALE', description: 'Ankara', costKobo: 800_000, paidKobo: 0 }]);
+
+  const { customer, csv } = store.exportCustomerCsv(id);
+  const lines = csv.replace(/^\uFEFF/, '').trim().split('\r\n');
+  assert.equal(customer.name, 'Mama Chidi');
+  assert.equal(lines[0], 'Date,Type,Description,Price (NGN),Paid (NGN),Balance after (NGN),Cancelled,Recorded as');
+  assert.equal(lines.length, 4);
+  assert.match(lines[1], /,Sale,Lace sewing,15000,5000,10000,,"lace, 15k, gave 5k"$/);
+  assert.match(lines[2], /,Payment,Payment,0,3000,7000,Yes,$/);
+  assert.match(lines[3], /,Cancellation,Cancelled: Payment,0,-3000,10000,,$/);
+  assert.equal(csv.includes('Iya Bisi') || csv.includes('Ankara'), false);
+  assert.throws(() => store.exportCustomerCsv(999), /could not be found/);
+});

@@ -122,3 +122,16 @@ test('calendar endpoints reject malformed dates', async (t) => {
   assert.match(month.data.month, /^\d{4}-\d{2}$/);
   assert.equal((await call(`/days/${month.data.today}`)).status, 200);
 });
+
+test('a single customer’s records download as their own file', async (t) => {
+  const call = await start(t);
+  await call('/session', { method: 'POST', body: { pin: '2468' } });
+  const created = await call('/customers', { method: 'POST', body: { name: 'Aunty Fúnmi Adéyemí' } });
+  await call('/entries', { method: 'POST', body: { entries: [{ customerId: created.data.id, kind: 'SALE', description: 'Aso ebi', costKobo: 9_000_000, paidKobo: 2_000_000 }] } });
+
+  const file = await call(`/customers/${created.data.id}/export.csv`);
+  assert.equal(file.status, 200);
+  assert.match(file.headers.get('content-disposition'), /beceko-aunty-funmi-adeyemi-\d{4}-\d{2}-\d{2}\.csv/);
+  assert.match(file.headers.get('content-type'), /text\/csv/);
+  assert.equal((await call('/customers/999/export.csv')).status, 404);
+});

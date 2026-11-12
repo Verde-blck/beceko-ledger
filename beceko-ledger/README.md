@@ -21,17 +21,24 @@ Open http://localhost:3000. To use it from a phone on the same Wi-Fi, open `http
 
 ## Quick entry
 
-With `GEMINI_API_KEY` set, the home page has a box where you can type or speak notes such as "Mama Chidi paid 5k for her lace". The app reads the note, fills in the details and waits for you to check them. Nothing is saved until you press Save. Everything can also be recorded by hand from the customer's page, with or without a key.
+The home page has a box where you can type or speak notes such as "Mama Chidi paid 5k for her lace". An AI model reads the note, fills in the details and waits for you to check them. Nothing is saved until you press Save. Everything can also be recorded by hand from the customer's page.
 
-Speaking uses the browser's built-in speech recognition. It works in Chrome on Android.
+Quick entry works with Claude or Gemini. Set one key in `.env` (and in the host's variables):
+
+- `ANTHROPIC_API_KEY` for Claude. The default model is `claude-haiku-5-5`; change it with `ANTHROPIC_MODEL`.
+- `GEMINI_API_KEY` for Gemini. The default model is `gemini-flash-latest`; change it with `GEMINI_MODEL`.
+
+If both keys are set, Claude is used. Set `AI_PROVIDER=gemini` to use Gemini instead.
 
 To test the key and model on their own, run:
 
 ```
-npm run check-gemini
+npm run check-ai
 ```
 
-It sends a test note through the same request quick entry uses and shows how Gemini read it. If the model in `GEMINI_MODEL` does not work, it tries the newest Flash models your key can use and tells you which one to put in `.env`.
+It sends a test note through the same request quick entry uses and shows how it was read. If the model does not work, it tries other models your key can use and tells you which one to set.
+
+Speaking uses the browser's built-in speech recognition, which is separate from the AI model. It works in Chrome on Android.
 
 ## Adding it to the home screen
 
@@ -78,7 +85,7 @@ The whole ledger lives in `data/ledger.db`. Back it up regularly with:
 sqlite3 data/ledger.db ".backup ledger-backup.db"
 ```
 
-Copying the file directly while the app is running can miss recent entries. The home page also has a link to download every record as a spreadsheet.
+Copying the file directly while the app is running can miss recent entries. The home page also has a link to download every record as a spreadsheet, and each customer's page has a Download records button for just that customer.
 
 ## Tests
 

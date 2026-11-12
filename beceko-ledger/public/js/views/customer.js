@@ -59,6 +59,7 @@ export async function renderCustomer(main, ctx, id) {
         <button class="button primary" type="button" data-open="payment" ${balance > 0 ? '' : html`disabled`}>Record payment</button>
         ${reminder ? html`<a class="button" href="${reminder}" target="_blank" rel="noopener">Send reminder</a>` : ''}
         <button class="button quiet" type="button" data-open="edit">Edit details</button>
+        ${entries.length > 0 ? html`<a class="button quiet" href="/api/customers/${customer.id}/export.csv" download>Download records</a>` : ''}
       </div>
 
       <form class="panel" data-panel="sale" novalidate hidden>
