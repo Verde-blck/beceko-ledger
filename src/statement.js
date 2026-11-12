@@ -161,7 +161,7 @@ export function statementPdf(statement, { businessName, note }) {
     }
   }
 
-  const closing = [note, 'Thank you for your Patronage, see you next time.'].filter(Boolean);
+  const closing = [note, 'Thank you for your patronage.'].filter(Boolean);
   doc.font('regular').fontSize(10);
   const closingHeight = closing.reduce((sum, text) => sum + doc.heightOfString(text, { width: CONTENT_WIDTH }) + 6, 0);
   if (y + 14 + closingHeight > pageBottom) {
@@ -173,7 +173,7 @@ export function statementPdf(statement, { businessName, note }) {
     doc.font('bold').fontSize(10).fillColor(INK).text(note, PAGE.margin, y, { width: CONTENT_WIDTH });
     y = doc.y + 6;
   }
-  doc.font('regular').fontSize(10).fillColor(SOFT).text('Thank you for your custom.', PAGE.margin, y, { width: CONTENT_WIDTH });
+  doc.font('regular').fontSize(10).fillColor(SOFT).text('Thank you for your patronage.', PAGE.margin, y, { width: CONTENT_WIDTH });
 
   footer(doc, { businessName, issuedOn: statement.issuedOn });
   doc.end();
