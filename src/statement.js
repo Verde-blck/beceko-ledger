@@ -161,7 +161,7 @@ export function statementPdf(statement, { businessName, note }) {
     }
   }
 
-  const closing = [note, 'Thank you for your custom.'].filter(Boolean);
+  const closing = [note, 'Thank you for your Patronage, see you next time.'].filter(Boolean);
   doc.font('regular').fontSize(10);
   const closingHeight = closing.reduce((sum, text) => sum + doc.heightOfString(text, { width: CONTENT_WIDTH }) + 6, 0);
   if (y + 14 + closingHeight > pageBottom) {
