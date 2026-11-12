@@ -1,3 +1,33 @@
+const PROVIDERS = ['claude', 'gemini'];
+
+export function aiSettings(env = process.env) {
+  const anthropicApiKey = env.ANTHROPIC_API_KEY || '';
+  const geminiApiKey = env.GEMINI_API_KEY || '';
+  const chosen = (env.AI_PROVIDER || '').trim().toLowerCase();
+  const warnings = [];
+  let provider = chosen || (anthropicApiKey ? 'claude' : geminiApiKey ? 'gemini' : '');
+
+  if (chosen && !PROVIDERS.includes(chosen)) {
+    warnings.push(`AI_PROVIDER "${env.AI_PROVIDER}" is not recognised. Use claude or gemini.`);
+    provider = '';
+  } else if (provider === 'claude' && !anthropicApiKey) {
+    warnings.push('AI_PROVIDER is claude but ANTHROPIC_API_KEY is empty.');
+    provider = '';
+  } else if (provider === 'gemini' && !geminiApiKey) {
+    warnings.push('AI_PROVIDER is gemini but GEMINI_API_KEY is empty.');
+    provider = '';
+  }
+
+  return {
+    provider,
+    anthropicApiKey,
+    anthropicModel: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
+    geminiApiKey,
+    geminiModel: env.GEMINI_MODEL || 'gemini-flash-latest',
+    warnings,
+  };
+}
+
 export function loadConfig(env = process.env) {
   const problems = [];
   const timeZone = env.LEDGER_TIME_ZONE || 'Africa/Lagos';
@@ -30,7 +60,7 @@ export function loadConfig(env = process.env) {
     timeZone,
     businessName: env.BUSINESS_NAME || 'Beceko',
     resetToken: env.RESET_LEDGER || '',
-    geminiApiKey: env.GEMINI_API_KEY || '',
-    geminiModel: env.GEMINI_MODEL || 'gemini-flash-latest',
+    statementNote: (env.STATEMENT_NOTE || '').trim(),
+    ai: aiSettings(env),
   };
 }

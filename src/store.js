@@ -25,6 +25,18 @@ const CUSTOMER_TOTALS = `
 
 const KIND_LABELS = { SALE: 'Sale', PAYMENT: 'Payment', VOID: 'Cancellation' };
 
+const ENTRY_HEADINGS = ['Type', 'Description', 'Price (NGN)', 'Paid (NGN)', 'Balance after (NGN)', 'Cancelled', 'Recorded as'];
+
+const entryColumns = (entry, balanceKobo) => [
+  KIND_LABELS[entry.kind],
+  entry.description,
+  entry.costKobo / 100,
+  entry.paidKobo / 100,
+  balanceKobo / 100,
+  entry.voidedById ? 'Yes' : '',
+  entry.sourceText ?? '',
+];
+
 const withStatus = (customer) => ({ ...customer, status: statusFor(customer.balanceKobo, customer.paidKobo) });
 
 function customerFields(input) {
@@ -148,16 +160,18 @@ export function createStore(db, { timeZone }) {
 
   const listCustomers = () => sql.customers.all().map(withStatus);
 
+  function getCustomer(id) {
+    const customer = sql.customer.get(id);
+    if (!customer) throw new HttpError(404, 'That customer could not be found.');
+    return { customer: withStatus(customer), entries: withRunningBalance(sql.entries.all(id)) };
+  }
+
   return {
     listCustomers,
 
     customerNames: () => sql.customerNames.all().map((row) => row.name),
 
-    getCustomer(id) {
-      const customer = sql.customer.get(id);
-      if (!customer) throw new HttpError(404, 'That customer could not be found.');
-      return { customer: withStatus(customer), entries: withRunningBalance(sql.entries.all(id)) };
-    },
+    getCustomer,
 
     createCustomer(input) {
       const { name, key, phone } = customerFields(input);
@@ -260,22 +274,42 @@ export function createStore(db, { timeZone }) {
       const rows = sql.allEntries.all().map((entry) => {
         const balance = (balances.get(entry.customerId) ?? 0) + entry.costKobo - entry.paidKobo;
         balances.set(entry.customerId, balance);
-        return [
-          entry.createdAt,
-          entry.customerName,
-          KIND_LABELS[entry.kind],
-          entry.description,
-          entry.costKobo / 100,
-          entry.paidKobo / 100,
-          balance / 100,
-          entry.voidedById ? 'Yes' : '',
-          entry.sourceText ?? '',
-        ];
+        return [entry.createdAt, entry.customerName, ...entryColumns(entry, balance)];
       });
-      return toCsv([
-        ['Date', 'Customer', 'Type', 'Description', 'Price (NGN)', 'Paid (NGN)', 'Balance after (NGN)', 'Cancelled', 'Recorded as'],
-        ...rows,
-      ]);
+      return toCsv([['Date', 'Customer', ...ENTRY_HEADINGS], ...rows]);
+    },
+
+    statement(id) {
+      const { customer, entries } = getCustomer(id);
+      let chargedKobo = 0;
+      let paidKobo = 0;
+      const lines = entries
+        .filter((entry) => entry.kind !== 'VOID' && entry.voidedById == null)
+        .map((entry) => {
+          chargedKobo += entry.costKobo;
+          paidKobo += entry.paidKobo;
+          return {
+            date: entry.createdAt.slice(0, 10),
+            description: entry.kind === 'PAYMENT' ? 'Payment received' : entry.description,
+            chargeKobo: entry.costKobo,
+            paidKobo: entry.paidKobo,
+            balanceKobo: chargedKobo - paidKobo,
+          };
+        });
+      return {
+        customer: { id: customer.id, name: customer.name, phone: customer.phone },
+        issuedOn: periodStarts(timeZone).today,
+        lines,
+        chargedKobo,
+        paidKobo,
+        balanceKobo: chargedKobo - paidKobo,
+      };
+    },
+
+    exportCustomerCsv(id) {
+      const { customer, entries } = getCustomer(id);
+      const rows = entries.map((entry) => [entry.createdAt, ...entryColumns(entry, entry.balanceKobo)]);
+      return { customer, csv: toCsv([['Date', ...ENTRY_HEADINGS], ...rows]) };
     },
   };
 }

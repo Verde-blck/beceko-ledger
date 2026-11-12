@@ -32,7 +32,8 @@ async function start(t, extract = null) {
     });
     const setCookie = response.headers.get('set-cookie');
     if (setCookie) cookie = setCookie.split(';')[0];
-    const data = response.status === 204 ? null : await response.json().catch(() => null);
+    const isPdf = response.headers.get('content-type') === 'application/pdf';
+    const data = response.status === 204 ? null : isPdf ? Buffer.from(await response.arrayBuffer()) : await response.json().catch(() => null);
     return { status: response.status, data, headers: response.headers };
   };
   return call;
@@ -121,4 +122,36 @@ test('calendar endpoints reject malformed dates', async (t) => {
   assert.equal(month.status, 200);
   assert.match(month.data.month, /^\d{4}-\d{2}$/);
   assert.equal((await call(`/days/${month.data.today}`)).status, 200);
+});
+
+test('a single customer’s records download as their own file', async (t) => {
+  const call = await start(t);
+  await call('/session', { method: 'POST', body: { pin: '2468' } });
+  const created = await call('/customers', { method: 'POST', body: { name: 'Aunty Fúnmi Adéyemí' } });
+  await call('/entries', { method: 'POST', body: { entries: [{ customerId: created.data.id, kind: 'SALE', description: 'Aso ebi', costKobo: 9_000_000, paidKobo: 2_000_000 }] } });
+
+  const file = await call(`/customers/${created.data.id}/export.csv`);
+  assert.equal(file.status, 200);
+  assert.match(file.headers.get('content-disposition'), /beceko-aunty-funmi-adeyemi-\d{4}-\d{2}-\d{2}\.csv/);
+  assert.match(file.headers.get('content-type'), /text\/csv/);
+  assert.equal((await call('/customers/999/export.csv')).status, 404);
+});
+
+test('a customer statement is available as data and as a PDF', async (t) => {
+  const call = await start(t);
+  await call('/session', { method: 'POST', body: { pin: '2468' } });
+  const created = await call('/customers', { method: 'POST', body: { name: 'Mama Chidi' } });
+  await call('/entries', { method: 'POST', body: { entries: [{ customerId: created.data.id, kind: 'SALE', description: 'Lace sewing', costKobo: 1_500_000, paidKobo: 500_000 }] } });
+
+  const data = await call(`/customers/${created.data.id}/statement`);
+  assert.equal(data.status, 200);
+  assert.equal(data.data.balanceKobo, 1_000_000);
+  assert.match(data.data.fileName, /^statement-mama-chidi-\d{4}-\d{2}-\d{2}\.pdf$/);
+
+  const pdf = await call(`/customers/${created.data.id}/statement.pdf`);
+  assert.equal(pdf.status, 200);
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+  assert.equal(pdf.data.subarray(0, 5).toString(), '%PDF-');
+  assert.match(pdf.headers.get('content-disposition'), /statement-mama-chidi-/);
+  assert.equal((await call('/customers/999/statement.pdf')).status, 404);
 });

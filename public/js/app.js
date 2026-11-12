@@ -5,12 +5,14 @@ import { renderCustomer } from './views/customer.js';
 import { renderCustomers } from './views/customers.js';
 import { renderHome } from './views/home.js';
 import { renderLogin } from './views/login.js';
+import { renderStatement } from './views/statement.js';
 
 const main = document.getElementById('view');
 const toastBox = document.getElementById('toast');
 
 const routes = [
   { pattern: /^#\/customers\/(\d+)$/, view: renderCustomer, tab: 'customers' },
+  { pattern: /^#\/customers\/(\d+)\/statement$/, view: renderStatement, tab: 'customers' },
   { pattern: /^#\/customers$/, view: renderCustomers, tab: 'customers' },
   { pattern: /^#\/calendar(?:\/(\d{4}-\d{2})(?:-(\d{2}))?)?$/, view: renderCalendar, tab: 'calendar' },
   { pattern: /^(#\/?)?$/, view: renderHome, tab: 'home' },

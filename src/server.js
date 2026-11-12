@@ -1,7 +1,7 @@
 import { createApp } from './app.js';
 import { createAuth } from './auth.js';
 import { loadConfig } from './config.js';
-import { createExtractor } from './extract.js';
+import { createExtractor, providerLabel } from './extract.js';
 import { openLedger } from './reset.js';
 import { createStore } from './store.js';
 
@@ -26,12 +26,17 @@ const app = createApp({
   config,
   store: createStore(db, config),
   auth: createAuth(config),
-  extract: createExtractor(config),
+  extract: createExtractor(config.ai),
 });
 
 const server = app.listen(config.port, () => {
   console.log(`Beceko Ledger running on http://localhost:${config.port}`);
-  if (!config.geminiApiKey) console.log('Quick entry is off. Set GEMINI_API_KEY to turn it on.');
+  for (const warning of config.ai.warnings) console.warn(warning);
+  console.log(
+    config.ai.provider
+      ? `Quick entry uses ${providerLabel(config.ai)}.`
+      : 'Quick entry is off. Set ANTHROPIC_API_KEY (Claude) or GEMINI_API_KEY to turn it on.',
+  );
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
