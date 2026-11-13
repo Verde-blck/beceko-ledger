@@ -1,8 +1,8 @@
 {
   "name": "beceko-ledger",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
-  "description": "Customer and money ledger for Beceko",
+  "description": "Ìwé Ọjà: a phone-first customer and money ledger for small businesses",
   "type": "module",
   "engines": {
     "node": ">=22.13"

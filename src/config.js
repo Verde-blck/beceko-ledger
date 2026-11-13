@@ -28,6 +28,9 @@ export function aiSettings(env = process.env) {
   };
 }
 
+import { DEFAULT_BRAND, loadBrand } from './brand.js';
+import { isValidDate } from './time.js';
+
 export function loadConfig(env = process.env) {
   const problems = [];
   const timeZone = env.LEDGER_TIME_ZONE || 'Africa/Lagos';
@@ -46,8 +49,21 @@ export function loadConfig(env = process.env) {
   if (env.RESET_LEDGER && !/^[A-Za-z0-9-]{8,64}$/.test(env.RESET_LEDGER)) {
     problems.push('RESET_LEDGER must be 8 to 64 letters, digits or hyphens, for example fresh-start-1.');
   }
+  if (env.PAID_UNTIL && !isValidDate(env.PAID_UNTIL)) {
+    problems.push(`PAID_UNTIL "${env.PAID_UNTIL}" must be a date written as YYYY-MM-DD, for example 2027-03-31.`);
+  }
+  const graceDays = env.GRACE_DAYS === undefined || env.GRACE_DAYS === '' ? 7 : Number(env.GRACE_DAYS);
+  if (!Number.isInteger(graceDays) || graceDays < 0 || graceDays > 60) {
+    problems.push('GRACE_DAYS must be a whole number of days from 0 to 60.');
+  }
+  let brand = null;
+  try {
+    brand = loadBrand(env.BRAND || DEFAULT_BRAND);
+  } catch (error) {
+    problems.push(error.message);
+  }
   if (problems.length > 0) {
-    throw new Error(`Cannot start Beceko Ledger:\n${problems.join('\n')}`);
+    throw new Error(`Cannot start the ledger:\n${problems.join('\n')}`);
   }
 
   return {
@@ -58,7 +74,13 @@ export function loadConfig(env = process.env) {
     trustProxy: env.TRUST_PROXY === 'true',
     databaseFile: env.DATABASE_FILE || 'data/ledger.db',
     timeZone,
-    businessName: env.BUSINESS_NAME || 'Beceko',
+    businessName: env.BUSINESS_NAME || brand.appName,
+    brand,
+    subscription: {
+      paidUntil: env.PAID_UNTIL || '',
+      graceDays,
+      renewContact: (env.RENEW_CONTACT || '').trim(),
+    },
     resetToken: env.RESET_LEDGER || '',
     statementNote: (env.STATEMENT_NOTE || '').trim(),
     statementClosing: (env.STATEMENT_CLOSING || '').trim() || 'Thank you for your patronage.',

@@ -917,3 +917,40 @@ textarea {
 .statement-note {
   font-weight: 600;
 }
+
+/* Subscription */
+
+.notice {
+  max-width: 40rem;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.notice[data-tone='warning'] {
+  border-color: var(--margin);
+  color: var(--owed);
+}
+
+@media (max-width: 42rem) {
+  .notice {
+    margin: 1rem 1rem 0;
+  }
+}
+
+body.locked .tabs {
+  display: none;
+}
+
+body.locked {
+  padding-bottom: 0;
+}
+
+.powered-by {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  text-align: center;
+}

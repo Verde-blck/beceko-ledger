@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const asset = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
 
 const FONTS = { regular: asset('assets/fonts/Lexend-Regular.ttf'), bold: asset('assets/fonts/Lexend-SemiBold.ttf') };
-const MARK = asset('public/icons/icon-192.png');
+const DEFAULT_LOGO = asset('brands/iwe-oja/icons/icon-192.png');
 
 const INK = '#1d2b53';
 const SOFT = '#55628a';
@@ -40,9 +40,9 @@ export function balanceSummary(balanceKobo) {
   return { label: 'Balance due', amount: 'Paid in full', colour: PAID };
 }
 
-function header(doc, statement, businessName) {
+function header(doc, statement, businessName, logo) {
   const top = PAGE.margin;
-  doc.image(MARK, PAGE.margin, top - 4, { width: 44 });
+  doc.image(logo, PAGE.margin, top - 4, { width: 44 });
   doc.font('bold').fontSize(17).fillColor(INK).text(businessName, PAGE.margin + 56, top, { width: 300 });
   doc.font('regular').fontSize(10).fillColor(SOFT).text('Statement of account', PAGE.margin + 56, doc.y + 1);
 
@@ -127,7 +127,7 @@ function footer(doc, { businessName, issuedOn }) {
   }
 }
 
-export function statementPdf(statement, { businessName, note, closing = DEFAULT_CLOSING }) {
+export function statementPdf(statement, { businessName, note, closing = DEFAULT_CLOSING, logo = DEFAULT_LOGO }) {
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: PAGE.margin, bottom: PAGE.margin, left: PAGE.margin, right: PAGE.margin },
@@ -145,7 +145,7 @@ export function statementPdf(statement, { businessName, note, closing = DEFAULT_
   });
 
   const pageBottom = PAGE.height - PAGE.margin - 24;
-  let y = customerAndTotals(doc, statement, header(doc, statement, businessName));
+  let y = customerAndTotals(doc, statement, header(doc, statement, businessName, logo));
 
   if (statement.lines.length === 0) {
     doc.font('regular').fontSize(11).fillColor(SOFT).text('There are no transactions to show.', PAGE.margin, y);

@@ -1,9 +1,13 @@
 import express from 'express';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { brandCss, loadBrand, manifest, renderIndex } from './brand.js';
 import { HttpError } from './errors.js';
 import { aiErrorDetail, quickEntryProblem } from './extract.js';
 import { DEFAULT_CLOSING, statementPdf } from './statement.js';
-import { isValidDate, isValidMonth, localTimestamp } from './time.js';
+import { subscriptionState } from './subscription.js';
+import { isValidDate, isValidMonth, localTimestamp, periodStarts } from './time.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 const MAX_NOTE = 1000;
@@ -51,19 +55,36 @@ function errorHandler(error, req, res, next) {
   res.status(500).json({ error: 'Something went wrong on the server. Try again.' });
 }
 
+const LOCKED_ALLOWED = new Set(['/export.csv', '/subscription']);
+
 export function createApp({ config, store, auth, extract }) {
+  const brand = config.brand ?? loadBrand();
+  const subscription = () =>
+    subscriptionState(config.subscription ?? {}, periodStarts(config.timeZone).today);
+  const indexHtml = renderIndex(readFileSync(join(PUBLIC_DIR, 'index.html'), 'utf8'), brand);
+
   const app = express();
   if (config.trustProxy) app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(securityHeaders);
   app.use(express.json({ limit: '64kb' }));
-  app.use(express.static(PUBLIC_DIR));
+
+  app.get(['/', '/index.html'], (req, res) => res.type('html').set('Cache-Control', 'no-cache').send(indexHtml));
+  app.get('/manifest.webmanifest', (req, res) => res.type('application/manifest+json').send(manifest(brand)));
+  app.get('/brand.css', (req, res) => res.type('css').send(brandCss(brand)));
+  app.get('/icon.svg', (req, res) => res.sendFile(join(brand.dir, 'icon.svg')));
+  app.get('/favicon.ico', (req, res) => res.sendFile(join(brand.dir, 'favicon.ico')));
+  app.use('/icons', express.static(join(brand.dir, 'icons')));
+  app.use(express.static(PUBLIC_DIR, { index: false }));
 
   app.get('/api/session', (req, res) => {
+    const authenticated = auth.isSignedIn(req);
     res.json({
-      authenticated: auth.isSignedIn(req),
+      authenticated,
       aiEnabled: Boolean(extract),
+      appName: brand.appName,
       businessName: config.businessName,
+      ...(authenticated ? { subscription: subscription() } : {}),
     });
   });
 
@@ -78,6 +99,13 @@ export function createApp({ config, store, auth, extract }) {
   });
 
   app.use('/api', auth.requireSignIn);
+
+  app.use('/api', (req, res, next) => {
+    if (subscription().state !== 'locked' || (req.method === 'GET' && LOCKED_ALLOWED.has(req.path))) return next();
+    res.status(402).json({ error: 'The subscription has ended. Renew it to carry on.', locked: true });
+  });
+
+  app.get('/api/subscription', (req, res) => res.json(subscription()));
 
   app.get('/api/summary', (req, res) => res.json(store.summary()));
 
@@ -139,7 +167,11 @@ export function createApp({ config, store, auth, extract }) {
 
   app.get('/api/customers/:id/statement.pdf', async (req, res) => {
     const statement = store.statement(idParam(req));
-    const pdf = await statementPdf(statement, { businessName: config.businessName, ...statementWording });
+    const pdf = await statementPdf(statement, {
+      businessName: config.businessName,
+      logo: join(brand.dir, 'icons/icon-192.png'),
+      ...statementWording,
+    });
     res
       .type('application/pdf')
       .set('Content-Disposition', `inline; filename="${statementFile(statement)}"`)

@@ -30,7 +30,10 @@ const app = createApp({
 });
 
 const server = app.listen(config.port, () => {
-  console.log(`Beceko Ledger running on http://localhost:${config.port}`);
+  console.log(`${config.brand.appName} running on http://localhost:${config.port} (brand: ${config.brand.id})`);
+  if (config.subscription.paidUntil) {
+    console.log(`Subscription paid until ${config.subscription.paidUntil}, with ${config.subscription.graceDays} days' grace.`);
+  }
   for (const warning of config.ai.warnings) console.warn(warning);
   console.log(
     config.ai.provider
