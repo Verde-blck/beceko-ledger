@@ -75,7 +75,7 @@ export async function renderStatement(main, ctx, id) {
         : html`<p class="empty">There are no transactions to show.</p>`}
 
       ${statement.note ? html`<p class="statement-note">${statement.note}</p>` : ''}
-      <p class="hint">Thank you for your custom.</p>
+      ${statement.closing ? html`<p class="hint">${statement.closing}</p>` : ''}
     </article>`);
 
   const section = main.querySelector('section');

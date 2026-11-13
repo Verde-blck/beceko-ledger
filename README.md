@@ -55,6 +55,8 @@ Each customer's page has a Statement button. It shows a statement of everything 
 
 The statement uses `BUSINESS_NAME` as its heading, so set it to the full business name, for example `BUSINESS_NAME=BECEKO Fabrics & Style`. To print a line at the bottom of every statement, such as bank details or a phone number, set `STATEMENT_NOTE`, for example `STATEMENT_NOTE=Pay to GTBank 0123456789 (Beceko Fabrics & Style). Call 0803 123 4567.`
 
+The thank-you line at the end comes from `STATEMENT_CLOSING`, which defaults to `Thank you for your patronage.` Change it in the variables and redeploy; the PDF and the in-app preview both use it.
+
 The statement font is Lexend, included under the SIL Open Font License (`assets/fonts/OFL.txt`).
 
 ## Light and dark mode

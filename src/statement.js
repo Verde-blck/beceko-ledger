@@ -13,6 +13,8 @@ const MARGIN_RED = '#d2373c';
 const OWED = '#b3262b';
 const PAID = '#0b7a4b';
 
+export const DEFAULT_CLOSING = 'Thank you for your patronage.';
+
 const PAGE = { width: 595.28, height: 841.89, margin: 48 };
 const CONTENT_WIDTH = PAGE.width - PAGE.margin * 2;
 const COLUMNS = [
@@ -125,7 +127,7 @@ function footer(doc, { businessName, issuedOn }) {
   }
 }
 
-export function statementPdf(statement, { businessName, note }) {
+export function statementPdf(statement, { businessName, note, closing = DEFAULT_CLOSING }) {
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: PAGE.margin, bottom: PAGE.margin, left: PAGE.margin, right: PAGE.margin },
@@ -161,9 +163,8 @@ export function statementPdf(statement, { businessName, note }) {
     }
   }
 
-  const closing = [note, 'Thank you for your patronage.'].filter(Boolean);
   doc.font('regular').fontSize(10);
-  const closingHeight = closing.reduce((sum, text) => sum + doc.heightOfString(text, { width: CONTENT_WIDTH }) + 6, 0);
+  const closingHeight = [note, closing].filter(Boolean).reduce((sum, text) => sum + doc.heightOfString(text, { width: CONTENT_WIDTH }) + 6, 0);
   if (y + 14 + closingHeight > pageBottom) {
     doc.addPage();
     y = PAGE.margin;
@@ -173,7 +174,7 @@ export function statementPdf(statement, { businessName, note }) {
     doc.font('bold').fontSize(10).fillColor(INK).text(note, PAGE.margin, y, { width: CONTENT_WIDTH });
     y = doc.y + 6;
   }
-  doc.font('regular').fontSize(10).fillColor(SOFT).text('Thank you for your patronage.', PAGE.margin, y, { width: CONTENT_WIDTH });
+  if (closing) doc.font('regular').fontSize(10).fillColor(SOFT).text(closing, PAGE.margin, y, { width: CONTENT_WIDTH });
 
   footer(doc, { businessName, issuedOn: statement.issuedOn });
   doc.end();

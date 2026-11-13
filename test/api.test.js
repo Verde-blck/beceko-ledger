@@ -147,6 +147,7 @@ test('a customer statement is available as data and as a PDF', async (t) => {
   assert.equal(data.status, 200);
   assert.equal(data.data.balanceKobo, 1_000_000);
   assert.match(data.data.fileName, /^statement-mama-chidi-\d{4}-\d{2}-\d{2}\.pdf$/);
+  assert.equal(data.data.closing, 'Thank you for your patronage.');
 
   const pdf = await call(`/customers/${created.data.id}/statement.pdf`);
   assert.equal(pdf.status, 200);

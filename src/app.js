@@ -2,7 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { HttpError } from './errors.js';
 import { aiErrorDetail, quickEntryProblem } from './extract.js';
-import { statementPdf } from './statement.js';
+import { DEFAULT_CLOSING, statementPdf } from './statement.js';
 import { isValidDate, isValidMonth, localTimestamp } from './time.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
@@ -128,16 +128,18 @@ export function createApp({ config, store, auth, extract }) {
     res.attachment(`beceko-ledger-${date}.csv`).send(store.exportCsv());
   });
 
+  const statementWording = { note: config.statementNote ?? '', closing: config.statementClosing || DEFAULT_CLOSING };
+
   const statementFile = (statement) => `statement-${fileSlug(statement.customer.name)}-${statement.issuedOn}.pdf`;
 
   app.get('/api/customers/:id/statement', (req, res) => {
     const statement = store.statement(idParam(req));
-    res.json({ ...statement, businessName: config.businessName, note: config.statementNote, fileName: statementFile(statement) });
+    res.json({ ...statement, ...statementWording, businessName: config.businessName, fileName: statementFile(statement) });
   });
 
   app.get('/api/customers/:id/statement.pdf', async (req, res) => {
     const statement = store.statement(idParam(req));
-    const pdf = await statementPdf(statement, { businessName: config.businessName, note: config.statementNote });
+    const pdf = await statementPdf(statement, { businessName: config.businessName, ...statementWording });
     res
       .type('application/pdf')
       .set('Content-Disposition', `inline; filename="${statementFile(statement)}"`)

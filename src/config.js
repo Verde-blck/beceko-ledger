@@ -61,6 +61,7 @@ export function loadConfig(env = process.env) {
     businessName: env.BUSINESS_NAME || 'Beceko',
     resetToken: env.RESET_LEDGER || '',
     statementNote: (env.STATEMENT_NOTE || '').trim(),
+    statementClosing: (env.STATEMENT_CLOSING || '').trim() || 'Thank you for your patronage.',
     ai: aiSettings(env),
   };
 }
