@@ -4,11 +4,13 @@ import { renderCalendar } from './views/calendar.js';
 import { renderCustomer } from './views/customer.js';
 import { renderCustomers } from './views/customers.js';
 import { renderHome } from './views/home.js';
+import { noticeText, renderLocked } from './views/locked.js';
 import { renderLogin } from './views/login.js';
 import { renderStatement } from './views/statement.js';
 
 const main = document.getElementById('view');
 const toastBox = document.getElementById('toast');
+const noticeBox = document.getElementById('notice');
 
 const routes = [
   { pattern: /^#\/customers\/(\d+)$/, view: renderCustomer, tab: 'customers' },
@@ -33,10 +35,19 @@ function toast(message) {
   toastTimer = setTimeout(() => toastBox.classList.remove('visible'), 3000);
 }
 
+function showNotice() {
+  const notice = session.authenticated ? noticeText(session.subscription, session.appName) : null;
+  noticeBox.hidden = !notice;
+  noticeBox.textContent = notice?.text ?? '';
+  noticeBox.dataset.tone = notice?.tone ?? '';
+}
+
 function showLogin() {
   renderId += 1;
   session = { ...session, authenticated: false };
   document.body.classList.add('signed-out');
+  document.body.classList.remove('locked');
+  showNotice();
   renderLogin(main, async () => {
     session = await api('/session');
     document.body.classList.remove('signed-out');
@@ -48,6 +59,11 @@ async function route() {
   if (!session.authenticated) return showLogin();
 
   const id = ++renderId;
+  const locked = session.subscription?.state === 'locked';
+  document.body.classList.toggle('locked', locked);
+  showNotice();
+  if (locked) return renderLocked(main, { session });
+
   const match = routes.find(({ pattern }) => pattern.test(location.hash));
   if (!match) {
     location.replace('#/');
@@ -65,6 +81,10 @@ async function route() {
   } catch (error) {
     if (!ctx.current()) return;
     if (error instanceof ApiError && error.status === 401) return showLogin();
+    if (error instanceof ApiError && error.status === 402) {
+      session = await api('/session').catch(() => session);
+      if (session.subscription?.state === 'locked') return route();
+    }
     mount(main, html`
       <section class="stack">
         <p class="form-error">${error.message}</p>

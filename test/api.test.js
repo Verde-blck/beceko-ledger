@@ -5,6 +5,8 @@ import { createApp } from '../src/app.js';
 import { createAuth } from '../src/auth.js';
 import { openDatabase } from '../src/db.js';
 import { createStore } from '../src/store.js';
+import { loadBrand } from '../src/brand.js';
+import { periodStarts } from '../src/time.js';
 
 const config = {
   pin: '2468',
@@ -155,4 +157,62 @@ test('a customer statement is available as data and as a PDF', async (t) => {
   assert.equal(pdf.data.subarray(0, 5).toString(), '%PDF-');
   assert.match(pdf.headers.get('content-disposition'), /statement-mama-chidi-/);
   assert.equal((await call('/customers/999/statement.pdf')).status, 404);
+});
+
+
+async function startWith(t, overrides) {
+  const db = openDatabase(':memory:');
+  const merged = { ...config, ...overrides };
+  const app = createApp({ config: merged, store: createStore(db, merged), auth: createAuth(merged), extract: null });
+  const server = app.listen(0);
+  await once(server, 'listening');
+  t.after(() => server.close());
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+const dayOffset = (days) => {
+  const today = periodStarts('Africa/Lagos').today;
+  const [y, m, d] = today.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+};
+
+async function signedIn(base) {
+  const response = await fetch(`${base}/api/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: '2468' }) });
+  return response.headers.get('set-cookie').split(';')[0];
+}
+
+test('a locked business can still sign in, see why, and download its records', async (t) => {
+  const base = await startWith(t, { subscription: { paidUntil: dayOffset(-8), graceDays: 7, renewContact: 'Pay to GTBank' } });
+  const cookie = await signedIn(base);
+  const get = (path) => fetch(`${base}${path}`, { headers: { cookie } });
+
+  const session = await (await get('/api/session')).json();
+  assert.equal(session.subscription.state, 'locked');
+  assert.equal(session.subscription.renewContact, 'Pay to GTBank');
+  assert.equal((await get('/api/summary')).status, 402);
+  assert.equal((await get('/api/customers')).status, 402);
+  assert.equal((await get('/api/export.csv')).status, 200);
+  assert.equal((await get('/api/subscription')).status, 200);
+});
+
+test('during the grace week everything still works', async (t) => {
+  const base = await startWith(t, { subscription: { paidUntil: dayOffset(-7), graceDays: 7, renewContact: '' } });
+  const cookie = await signedIn(base);
+  const session = await (await fetch(`${base}/api/session`, { headers: { cookie } })).json();
+  assert.equal(session.subscription.state, 'grace');
+  assert.equal((await fetch(`${base}/api/summary`, { headers: { cookie } })).status, 200);
+});
+
+test('the page, manifest, colours and icons come from the chosen brand', async (t) => {
+  const base = await startWith(t, { brand: loadBrand('beceko') });
+  const page = await (await fetch(`${base}/`)).text();
+  assert.match(page, /<title>Beceko Ledger<\/title>/);
+  assert.doesNotMatch(page, /\{\{/);
+  assert.equal((await (await fetch(`${base}/manifest.webmanifest`)).json()).short_name, 'Beceko');
+  assert.match(await (await fetch(`${base}/brand.css`)).text(), /#2348a8/);
+  for (const path of ['/icon.svg', '/favicon.ico', '/icons/icon-512.png', '/icons/apple-touch-icon.png']) {
+    assert.equal((await fetch(`${base}${path}`)).status, 200, path);
+  }
+  const unbranded = await startWith(t, {});
+  assert.match(await (await fetch(`${unbranded}/`)).text(), /<title>Ìwé Ọjà<\/title>/);
 });

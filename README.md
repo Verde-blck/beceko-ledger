@@ -1,6 +1,9 @@
-# Beceko Ledger
+# Ìwé Ọjà
 
-Keeps track of Beceko's customers: what each person bought, what they paid, and what they still owe.
+A phone-first ledger for small businesses: who bought what, what they paid, and what they still owe. Each business runs its own copy with its own name, colours and icons. BECEKO Fabrics & Style's copy is branded Beceko Ledger.
+
+- `brands/README.md` explains brands.
+- `docs/onboarding.md` is the checklist for setting up a new business, including subscriptions.
 
 ## Running it
 

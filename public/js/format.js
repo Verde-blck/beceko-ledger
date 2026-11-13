@@ -124,3 +124,6 @@ export function shiftMonth(month, by) {
   date.setUTCMonth(date.getUTCMonth() + by);
   return date.toISOString().slice(0, 7);
 }
+
+export const fullDate = (date) =>
+  utcDate(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
