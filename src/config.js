@@ -28,6 +28,7 @@ export function aiSettings(env = process.env) {
   };
 }
 
+import { backupSettings } from './backup.js';
 import { DEFAULT_BRAND, loadBrand } from './brand.js';
 import { isValidDate } from './time.js';
 
@@ -62,6 +63,8 @@ export function loadConfig(env = process.env) {
   } catch (error) {
     problems.push(error.message);
   }
+  const backup = backupSettings(env, brand?.id);
+  problems.push(...backup.problems);
   if (problems.length > 0) {
     throw new Error(`Cannot start the ledger:\n${problems.join('\n')}`);
   }
@@ -76,6 +79,7 @@ export function loadConfig(env = process.env) {
     timeZone,
     businessName: env.BUSINESS_NAME || brand.appName,
     brand,
+    backup,
     subscription: {
       paidUntil: env.PAID_UNTIL || '',
       graceDays,
