@@ -1,6 +1,6 @@
 {
   "name": "beceko-ledger",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Ìwé Ọjà: a phone-first customer and money ledger for small businesses",
   "type": "module",
