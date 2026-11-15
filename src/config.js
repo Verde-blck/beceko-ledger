@@ -64,7 +64,6 @@ export function loadConfig(env = process.env) {
     problems.push(error.message);
   }
   const backup = backupSettings(env, brand?.id);
-  problems.push(...backup.problems);
   if (problems.length > 0) {
     throw new Error(`Cannot start the ledger:\n${problems.join('\n')}`);
   }

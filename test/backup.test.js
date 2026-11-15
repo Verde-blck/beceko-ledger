@@ -67,7 +67,9 @@ test('backup settings are all or nothing, and checked at start-up', () => {
   assert.match(backupSettings({ BACKUP_HOUR: '25' }, 'x').problems[0], /BACKUP_HOUR/);
   assert.ok(backupSettings({ RESTORE_BACKUP: '../etc/passwd' }, 'x').problems.some((p) => /RESTORE_BACKUP must be/.test(p)));
   assert.ok(backupSettings({ RESTORE_BACKUP: 'beceko/a.db.gz' }, 'x').problems.some((p) => /needs the BACKUP_ settings/.test(p)));
-  assert.throws(() => loadConfig({ LEDGER_PIN: '2468', SESSION_SECRET: 'a'.repeat(32), BACKUP_BUCKET: 'b' }), /Backups need all of/);
+  const halfDone = loadConfig({ LEDGER_PIN: '2468', SESSION_SECRET: 'a'.repeat(32), BACKUP_BUCKET: 'b' });
+  assert.equal(halfDone.backup.enabled, false);
+  assert.match(halfDone.backup.problems[0], /Backups need all of/);
 });
 
 test('the next backup waits until the chosen hour in the business time zone', () => {
@@ -138,4 +140,13 @@ test('a restore refuses anything that is not a ledger backup', async (t) => {
   openDatabase(file).close();
   await assert.rejects(restoreIfAsked(file, backupSettings({ ...env, RESTORE_BACKUP: 'beceko/not-a-ledger.db.gz' }, 'beceko'), 'Africa/Lagos', quiet), /not a ledger backup/);
   await assert.rejects(restoreIfAsked(file, backupSettings({ ...env, RESTORE_BACKUP: 'beceko/missing.db.gz' }, 'beceko'), 'Africa/Lagos', quiet), /404/);
+});
+
+test('the storage address is tidied up and checked at start-up', () => {
+  const base = { BACKUP_REGION: ' eu-central-003 ', BACKUP_BUCKET: '"iwe-oja-backups"', BACKUP_ACCESS_KEY_ID: 'k', BACKUP_SECRET_ACCESS_KEY: 's' };
+  const bare = backupSettings({ ...base, BACKUP_ENDPOINT: 's3.eu-central-003.backblazeb2.com' }, 'beceko');
+  assert.deepEqual([bare.problems, bare.endpoint, bare.region, bare.bucket], [[], 'https://s3.eu-central-003.backblazeb2.com', 'eu-central-003', 'iwe-oja-backups']);
+  assert.equal(backupSettings({ ...base, BACKUP_ENDPOINT: ' "https://s3.eu-central-003.backblazeb2.com/" ' }, 'b').endpoint, 'https://s3.eu-central-003.backblazeb2.com');
+  assert.match(backupSettings({ ...base, BACKUP_ENDPOINT: 'https://s3.eu-central-003.backblazeb2.com/iwe-oja-backups' }, 'b').problems[0], /without the bucket name/);
+  assert.match(backupSettings({ ...base, BACKUP_ENDPOINT: 'Endpoint: s3.eu-central-003.backblazeb2.com' }, 'b').problems[0], /is not a web address/);
 });

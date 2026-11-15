@@ -15,7 +15,7 @@ try {
 }
 
 try {
-  const restored = await restoreIfAsked(config.databaseFile, config.backup, config.timeZone);
+  const restored = config.backup.problems.length > 0 ? null : await restoreIfAsked(config.databaseFile, config.backup, config.timeZone);
   if (restored?.done) {
     console.log(`RESTORE_BACKUP: the ledger was replaced with ${config.backup.restore}.`);
     if (restored.saved) console.log(`The ledger as it was before the restore was saved to ${restored.saved}.`);
@@ -54,10 +54,13 @@ const server = app.listen(config.port, () => {
       ? `Quick entry uses ${providerLabel(config.ai)}.`
       : 'Quick entry is off. Set ANTHROPIC_API_KEY (Claude) or GEMINI_API_KEY to turn it on.',
   );
+  for (const problem of config.backup.problems) console.error(`Backup settings: ${problem}`);
   console.log(
     config.backup.enabled
       ? `Nightly backups go to ${config.backup.bucket}/${config.backup.prefix}/ at ${String(config.backup.hour).padStart(2, '0')}:00.`
-      : 'Backups are off. Set the BACKUP_ variables to turn them on.',
+      : config.backup.problems.length > 0
+        ? 'Backups are OFF until the settings above are fixed. The ledger itself is running normally.'
+        : 'Backups are off. Set the BACKUP_ variables to turn them on.',
   );
 });
 

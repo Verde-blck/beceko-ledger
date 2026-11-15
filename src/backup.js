@@ -12,9 +12,29 @@ const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$/;
 const DAY_SECONDS = 24 * 60 * 60;
 const CATCH_UP_AFTER_MS = 26 * 60 * 60 * 1000;
 
-export function backupSettings(env, brandId) {
+const clean = (value) => String(value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+
+function normaliseEndpoint(value) {
+  const text = clean(value).replace(/\/+$/, '');
+  if (!text) return { endpoint: '' };
+  const endpoint = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(endpoint);
+    if (url.pathname !== '/' || url.search) {
+      return { endpoint, problem: 'BACKUP_ENDPOINT should be only the address, such as https://s3.eu-central-003.backblazeb2.com, without the bucket name.' };
+    }
+    return { endpoint: url.origin };
+  } catch {
+    return { endpoint, problem: `BACKUP_ENDPOINT "${value}" is not a web address. Copy it from the bucket page, for example https://s3.eu-central-003.backblazeb2.com.` };
+  }
+}
+
+export function backupSettings(rawEnv, brandId) {
+  const env = Object.fromEntries(Object.entries(rawEnv).map(([name, value]) => [name, name.startsWith('BACKUP_') ? clean(value) : value]));
   const given = SETTINGS.filter((name) => env[name]);
   const problems = [];
+  const { endpoint, problem } = normaliseEndpoint(env.BACKUP_ENDPOINT);
+  if (problem) problems.push(problem);
   if (given.length > 0 && given.length < SETTINGS.length) {
     problems.push(`Backups need all of ${SETTINGS.join(', ')}. Missing: ${SETTINGS.filter((n) => !env[n]).join(', ')}.`);
   }
@@ -28,8 +48,8 @@ export function backupSettings(env, brandId) {
 
   return {
     problems,
-    enabled: given.length === SETTINGS.length,
-    endpoint: (env.BACKUP_ENDPOINT || '').replace(/\/+$/, ''),
+    enabled: given.length === SETTINGS.length && problems.length === 0,
+    endpoint,
     region: env.BACKUP_REGION || '',
     bucket: env.BACKUP_BUCKET || '',
     accessKeyId: env.BACKUP_ACCESS_KEY_ID || '',
