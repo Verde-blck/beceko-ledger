@@ -10,11 +10,31 @@ const SETTINGS = ['BACKUP_ENDPOINT', 'BACKUP_REGION', 'BACKUP_BUCKET', 'BACKUP_A
 const SQLITE_HEADER = 'SQLite format 3\0';
 const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$/;
 const DAY_SECONDS = 24 * 60 * 60;
-const CATCH_UP_AFTER_MS = 26 * 60 * 60 * 1000;
+const CATCH_UP_AFTER_HOURS = 20;
 
-export function backupSettings(env, brandId) {
+const clean = (value) => String(value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+
+function normaliseEndpoint(value) {
+  const text = clean(value).replace(/\/+$/, '');
+  if (!text) return { endpoint: '' };
+  const endpoint = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(endpoint);
+    if (url.pathname !== '/' || url.search) {
+      return { endpoint, problem: 'BACKUP_ENDPOINT should be only the address, such as https://s3.eu-central-003.backblazeb2.com, without the bucket name.' };
+    }
+    return { endpoint: url.origin };
+  } catch {
+    return { endpoint, problem: `BACKUP_ENDPOINT "${value}" is not a web address. Copy it from the bucket page, for example https://s3.eu-central-003.backblazeb2.com.` };
+  }
+}
+
+export function backupSettings(rawEnv, brandId) {
+  const env = Object.fromEntries(Object.entries(rawEnv).map(([name, value]) => [name, name.startsWith('BACKUP_') ? clean(value) : value]));
   const given = SETTINGS.filter((name) => env[name]);
   const problems = [];
+  const { endpoint, problem } = normaliseEndpoint(env.BACKUP_ENDPOINT);
+  if (problem) problems.push(problem);
   if (given.length > 0 && given.length < SETTINGS.length) {
     problems.push(`Backups need all of ${SETTINGS.join(', ')}. Missing: ${SETTINGS.filter((n) => !env[n]).join(', ')}.`);
   }
@@ -28,8 +48,8 @@ export function backupSettings(env, brandId) {
 
   return {
     problems,
-    enabled: given.length === SETTINGS.length,
-    endpoint: (env.BACKUP_ENDPOINT || '').replace(/\/+$/, ''),
+    enabled: given.length === SETTINGS.length && problems.length === 0,
+    endpoint,
     region: env.BACKUP_REGION || '',
     bucket: env.BACKUP_BUCKET || '',
     accessKeyId: env.BACKUP_ACCESS_KEY_ID || '',
@@ -108,6 +128,11 @@ export function secondsUntilHour(timeZone, hour, date = new Date()) {
   return wait === 0 ? DAY_SECONDS : wait;
 }
 
+export function catchUpDue(lastBackupAt, now = Date.now()) {
+  const last = Date.parse(lastBackupAt ?? '');
+  return !(now - last < CATCH_UP_AFTER_HOURS * 60 * 60 * 1000);
+}
+
 export function scheduleBackups(db, settings, timeZone, log = console) {
   if (!settings.enabled) return { stop() {} };
   let timer;
@@ -129,10 +154,14 @@ export function scheduleBackups(db, settings, timeZone, log = console) {
     timer.unref?.();
   };
 
-  const last = Date.parse(getMeta(db, 'last_backup_at') ?? '');
-  if (!(Date.now() - last < CATCH_UP_AFTER_MS)) {
+  const lastAt = getMeta(db, 'last_backup_at');
+  if (catchUpDue(lastAt)) {
+    log.log(lastAt ? 'The last backup is over 20 hours old, so a new one will be made in a minute.' : 'No backup yet, so one will be made in a minute.');
     const catchUp = setTimeout(run, 60_000);
     catchUp.unref?.();
+  } else {
+    const hours = Math.floor((Date.now() - Date.parse(lastAt)) / 3_600_000);
+    log.log(`Last backup ${hours === 0 ? 'less than an hour' : hours === 1 ? '1 hour' : `${hours} hours`} ago: ${getMeta(db, 'last_backup_key')}.`);
   }
   next();
   return { stop: () => clearTimeout(timer) };
