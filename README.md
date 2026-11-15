@@ -92,7 +92,7 @@ Leaving the variable set does nothing more, because a value is only ever used on
 
 ## Backups
 
-Every night (02:00 by default, in the business's time zone) the app saves a compressed copy of the whole ledger to S3-compatible cloud storage, such as Backblaze B2. Each copy is a separate file named after the brand and the time, for example `beceko/2026-11-14-0200.db.gz`. If the app was offline at backup time, it makes a catch-up copy a minute after it next starts.
+Every night (02:00 by default, in the business's time zone) the app saves a compressed copy of the whole ledger to S3-compatible cloud storage, such as Backblaze B2. Each copy is a separate file named after the brand and the time, for example `beceko/2026-11-14-0200.db.gz`. If the app was asleep or offline at backup time, which is normal with Railway's Serverless setting, it makes a copy a minute after it next starts whenever the last copy is more than 20 hours old. With Serverless on, that means one copy on the first visit of each day, which is when the records change. The log says when the last copy was made each time the app starts.
 
 **Setting it up with Backblaze B2**
 

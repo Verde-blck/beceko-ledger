@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import { DatabaseSync } from 'node:sqlite';
-import { backupNow, backupSettings, listBackups, restoreIfAsked, secondsUntilHour } from '../src/backup.js';
+import { backupNow, backupSettings, catchUpDue, listBackups, restoreIfAsked, secondsUntilHour } from '../src/backup.js';
 import { loadConfig } from '../src/config.js';
 import { openDatabase } from '../src/db.js';
 import { createStore } from '../src/store.js';
@@ -149,4 +149,12 @@ test('the storage address is tidied up and checked at start-up', () => {
   assert.equal(backupSettings({ ...base, BACKUP_ENDPOINT: ' "https://s3.eu-central-003.backblazeb2.com/" ' }, 'b').endpoint, 'https://s3.eu-central-003.backblazeb2.com');
   assert.match(backupSettings({ ...base, BACKUP_ENDPOINT: 'https://s3.eu-central-003.backblazeb2.com/iwe-oja-backups' }, 'b').problems[0], /without the bucket name/);
   assert.match(backupSettings({ ...base, BACKUP_ENDPOINT: 'Endpoint: s3.eu-central-003.backblazeb2.com' }, 'b').problems[0], /is not a web address/);
+});
+
+test('waking from sleep makes a backup when the last one is over 20 hours old', () => {
+  const now = Date.parse('2026-11-16T09:00:00Z');
+  assert.equal(catchUpDue(undefined, now), true);
+  assert.equal(catchUpDue('2026-11-15T14:00:00Z', now), false);
+  assert.equal(catchUpDue('2026-11-15T12:59:00Z', now), true);
+  assert.equal(catchUpDue('not a date', now), true);
 });

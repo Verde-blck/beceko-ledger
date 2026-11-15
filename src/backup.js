@@ -10,7 +10,7 @@ const SETTINGS = ['BACKUP_ENDPOINT', 'BACKUP_REGION', 'BACKUP_BUCKET', 'BACKUP_A
 const SQLITE_HEADER = 'SQLite format 3\0';
 const KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$/;
 const DAY_SECONDS = 24 * 60 * 60;
-const CATCH_UP_AFTER_MS = 26 * 60 * 60 * 1000;
+const CATCH_UP_AFTER_HOURS = 20;
 
 const clean = (value) => String(value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
 
@@ -128,6 +128,11 @@ export function secondsUntilHour(timeZone, hour, date = new Date()) {
   return wait === 0 ? DAY_SECONDS : wait;
 }
 
+export function catchUpDue(lastBackupAt, now = Date.now()) {
+  const last = Date.parse(lastBackupAt ?? '');
+  return !(now - last < CATCH_UP_AFTER_HOURS * 60 * 60 * 1000);
+}
+
 export function scheduleBackups(db, settings, timeZone, log = console) {
   if (!settings.enabled) return { stop() {} };
   let timer;
@@ -149,10 +154,14 @@ export function scheduleBackups(db, settings, timeZone, log = console) {
     timer.unref?.();
   };
 
-  const last = Date.parse(getMeta(db, 'last_backup_at') ?? '');
-  if (!(Date.now() - last < CATCH_UP_AFTER_MS)) {
+  const lastAt = getMeta(db, 'last_backup_at');
+  if (catchUpDue(lastAt)) {
+    log.log(lastAt ? 'The last backup is over 20 hours old, so a new one will be made in a minute.' : 'No backup yet, so one will be made in a minute.');
     const catchUp = setTimeout(run, 60_000);
     catchUp.unref?.();
+  } else {
+    const hours = Math.floor((Date.now() - Date.parse(lastAt)) / 3_600_000);
+    log.log(`Last backup ${hours === 0 ? 'less than an hour' : hours === 1 ? '1 hour' : `${hours} hours`} ago: ${getMeta(db, 'last_backup_key')}.`);
   }
   next();
   return { stop: () => clearTimeout(timer) };
