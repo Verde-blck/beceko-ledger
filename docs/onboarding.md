@@ -28,10 +28,14 @@ Each business gets its own copy of the app on Railway: its own service, volume, 
    PAID_UNTIL=<last paid day, YYYY-MM-DD>
    RENEW_CONTACT=<how to pay you, shown when the subscription ends>
    STATEMENT_NOTE=<their bank details or phone number, optional>
+   BACKUP_ENDPOINT, BACKUP_REGION, BACKUP_BUCKET,
+   BACKUP_ACCESS_KEY_ID, BACKUP_SECRET_ACCESS_KEY=<same as the other copies>
    ```
 
+   Every copy can share one bucket: each one saves into its own folder, named after its brand.
+
 4. Generate a domain, or add `<their-name>.<your domain>` as a custom domain and create the DNS record Railway shows you.
-5. Check the deploy log says `running` with the right brand and the right paid-until date.
+5. Check the deploy log says `running` with the right brand and the right paid-until date, and that backups are on.
 
 ## 3. Handover
 

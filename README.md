@@ -92,14 +92,34 @@ Leaving the variable set does nothing more, because a value is only ever used on
 
 ## Backups
 
-The whole ledger lives in `data/ledger.db`. Back it up regularly with:
+Every night (02:00 by default, in the business's time zone) the app saves a compressed copy of the whole ledger to S3-compatible cloud storage, such as Backblaze B2. Each copy is a separate file named after the brand and the time, for example `beceko/2026-11-14-0200.db.gz`. If the app was offline at backup time, it makes a catch-up copy a minute after it next starts.
 
-```
-sqlite3 data/ledger.db ".backup ledger-backup.db"
-```
+**Setting it up with Backblaze B2**
 
-Copying the file directly while the app is running can miss recent entries. The home page also has a link to download every record as a spreadsheet, and each customer's page has a Download records button for just that customer.
+1. Create a Backblaze account and a **private** bucket, for example `iwe-oja-backups`. Turn on encryption if it is offered.
+2. Under Application Keys, add a key that can only access that bucket, with read and write access. Copy the key ID and the application key straight away; the application key is shown only once.
+3. Set these variables (in Railway, and in `.env` to run the backup commands locally):
 
+   ```
+   BACKUP_ENDPOINT=https://s3.<region>.backblazeb2.com
+   BACKUP_REGION=<region, for example eu-central-003>
+   BACKUP_BUCKET=iwe-oja-backups
+   BACKUP_ACCESS_KEY_ID=<key ID>
+   BACKUP_SECRET_ACCESS_KEY=<application key>
+   ```
+
+   The region is shown on the bucket's page as part of its endpoint. `BACKUP_PREFIX` (the folder in the bucket) defaults to the brand, and `BACKUP_HOUR` (0 to 23) changes the time.
+4. Deploy, and check the log says `Nightly backups go to ...`, then `Backup saved: ...` about a minute later.
+
+Backups are small, so keeping them all costs little. To keep only recent ones, add a lifecycle rule on the bucket that deletes files after, say, 90 days.
+
+**Checking and restoring**
+
+- `npm run backups` lists the saved copies. `npm run backup-now` makes one immediately from the local database.
+- To restore, set `RESTORE_BACKUP` to the name of a copy, for example `RESTORE_BACKUP=beceko/2026-11-14-0200.db.gz`, and deploy. The log says the ledger was replaced and where the previous version was saved (next to the database, as `ledger-before-restore-...db`). Then remove the variable. As with `RESET_LEDGER`, each value only works once, so leaving it set is harmless.
+- If a restore fails, for example because the name is wrong, the app keeps running on its existing records and says why in the log.
+
+The home page also has a link to download every record as a spreadsheet, and each customer's page has a Download records button for just that customer.
 ## Tests
 
 ```
