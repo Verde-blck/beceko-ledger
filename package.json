@@ -1,6 +1,6 @@
 {
   "name": "beceko-ledger",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "private": true,
   "description": "Ìwé Ọjà: a phone-first customer and money ledger for small businesses",
   "type": "module",
@@ -14,7 +14,8 @@
     "check-ai": "node --env-file-if-exists=.env scripts/check-ai.js",
     "check-gemini": "npm run check-ai",
     "backups": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/backups.js list",
-    "backup-now": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/backups.js now"
+    "backup-now": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/backups.js now",
+    "admin": "node --env-file-if-exists=.env src/admin/server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

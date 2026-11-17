@@ -14,14 +14,14 @@ function readCookie(header, name) {
   return null;
 }
 
-export function createAuth({ pin, sessionSecret, secureCookies }) {
+export function createAuth({ pin, sessionSecret, secureCookies, cookieName = COOKIE_NAME, wrongMessage = 'That PIN is not correct.' }) {
   const mac = (value) => createHmac('sha256', sessionSecret).update(value).digest();
   const expectedPin = mac(`pin:${pin}`);
   const failures = new Map();
   const cookieOptions = { httpOnly: true, sameSite: 'strict', secure: secureCookies, path: '/' };
 
   function isSignedIn(req) {
-    const [expires, signature] = (readCookie(req.headers.cookie, COOKIE_NAME) ?? '').split('.');
+    const [expires, signature] = (readCookie(req.headers.cookie, cookieName) ?? '').split('.');
     if (!expires || !signature || Number(expires) < Date.now()) return false;
     const expected = mac(`session:${expires}`);
     const given = Buffer.from(signature, 'base64url');
@@ -38,17 +38,17 @@ export function createAuth({ pin, sessionSecret, secureCookies }) {
     }
     if (!timingSafeEqual(mac(`pin:${String(submittedPin ?? '')}`), expectedPin)) {
       failures.set(req.ip, { count: (current?.count ?? 0) + 1, since: current?.since ?? now });
-      throw new HttpError(401, 'That PIN is not correct.');
+      throw new HttpError(401, wrongMessage);
     }
 
     failures.delete(req.ip);
     const expires = String(now + SESSION_MS);
     const token = `${expires}.${mac(`session:${expires}`).toString('base64url')}`;
-    res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: SESSION_MS });
+    res.cookie(cookieName, token, { ...cookieOptions, maxAge: SESSION_MS });
   }
 
   function signOut(res) {
-    res.clearCookie(COOKIE_NAME, cookieOptions);
+    res.clearCookie(cookieName, cookieOptions);
   }
 
   function requireSignIn(req, res, next) {
