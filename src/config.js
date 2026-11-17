@@ -86,6 +86,8 @@ export function loadConfig(env = process.env) {
     },
     resetToken: env.RESET_LEDGER || '',
     statementNote: (env.STATEMENT_NOTE || '').trim(),
+    adminToken: (env.ADMIN_TOKEN || '').trim().length >= 32 ? env.ADMIN_TOKEN.trim() : '',
+    adminTokenProblem: env.ADMIN_TOKEN && env.ADMIN_TOKEN.trim().length < 32 ? 'ADMIN_TOKEN is too short, so the admin dashboard cannot connect. Copy the full token from the dashboard.' : '',
     statementClosing: (env.STATEMENT_CLOSING || '').trim() || 'Thank you for your patronage.',
     ai: aiSettings(env),
   };

@@ -95,6 +95,10 @@ export function createStore(db, { timeZone }) {
       FROM entries e JOIN customers c ON c.id = e.customer_id
       WHERE e.created_at >= ? AND e.created_at < ?
       ORDER BY e.id`),
+    meta: db.prepare('SELECT value FROM meta WHERE key = ?'),
+    setMeta: db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
+    deleteMeta: db.prepare('DELETE FROM meta WHERE key = ?'),
+    usage: db.prepare('SELECT (SELECT COUNT(*) FROM customers) AS customers, (SELECT MAX(created_at) FROM entries) AS lastEntryAt'),
     allEntries: db.prepare(`
       SELECT ${ENTRY_COLUMNS}, c.name AS customerName
       FROM entries e JOIN customers c ON c.id = e.customer_id
@@ -277,6 +281,30 @@ export function createStore(db, { timeZone }) {
         return [entry.createdAt, entry.customerName, ...entryColumns(entry, balance)];
       });
       return toCsv([['Date', 'Customer', ...ENTRY_HEADINGS], ...rows]);
+    },
+
+    subscriptionOverrides() {
+      const paidUntil = sql.meta.get('paid_until')?.value;
+      return {
+        paidUntil: paidUntil === undefined ? undefined : paidUntil === 'none' ? '' : paidUntil,
+        suspended: sql.meta.get('suspended')?.value === '1',
+      };
+    },
+
+    setSubscription({ paidUntil, suspended }) {
+      if (paidUntil !== undefined) sql.setMeta.run('paid_until', paidUntil === null ? 'none' : paidUntil);
+      if (suspended === true) sql.setMeta.run('suspended', '1');
+      if (suspended === false) sql.deleteMeta.run('suspended');
+    },
+
+    operatorStatus() {
+      const { customers, lastEntryAt } = sql.usage.get();
+      return {
+        customers,
+        lastEntryAt: lastEntryAt ?? null,
+        lastBackupAt: sql.meta.get('last_backup_at')?.value ?? null,
+        lastBackupKey: sql.meta.get('last_backup_key')?.value ?? null,
+      };
     },
 
     statement(id) {

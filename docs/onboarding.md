@@ -37,7 +37,13 @@ Each business gets its own copy of the app on Railway: its own service, volume, 
 4. Generate a domain, or add `<their-name>.<your domain>` as a custom domain and create the DNS record Railway shows you.
 5. Check the deploy log says `running` with the right brand and the right paid-until date, and that backups are on.
 
-## 3. Handover
+## 3. Connect it to the admin dashboard
+
+1. Add `<their-name>=<their address>` to the dashboard's `BUSINESSES` variable.
+2. On the dashboard, open **Show its ADMIN_TOKEN** for them and set that value as `ADMIN_TOKEN` on their service.
+3. Check their card shows on the dashboard with the right paid-until date.
+
+## 4. Handover
 
 1. Open their address, sign in with the PIN, and record and cancel a test sale.
 2. Send them the address and the PIN separately.
@@ -45,7 +51,9 @@ Each business gets its own copy of the app on Railway: its own service, volume, 
 
 ## Renewals
 
-When a business pays, change its `PAID_UNTIL` to the new last paid day. Railway redeploys the service, and the app unlocks straight away if it was locked.
+When a business pays, use **+1 month**, **+3 months** or **+1 year** on its card in the admin dashboard, or set the exact date. It takes effect immediately and unlocks the business if it was locked. Extending a business that is still paid up adds the time after its current end date; extending one that has lapsed starts from today.
+
+(Without the dashboard, you can still change `PAID_UNTIL` on the service, as long as the dashboard has never set a date for it.)
 
 - Up to 7 days before `PAID_UNTIL`: a reminder shows at the top of the app.
 - For 7 days after `PAID_UNTIL` (set with `GRACE_DAYS`): everything still works, with a warning to renew.

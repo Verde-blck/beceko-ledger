@@ -54,6 +54,8 @@ const server = app.listen(config.port, () => {
       ? `Quick entry uses ${providerLabel(config.ai)}.`
       : 'Quick entry is off. Set ANTHROPIC_API_KEY (Claude) or GEMINI_API_KEY to turn it on.',
   );
+  if (config.adminTokenProblem) console.error(config.adminTokenProblem);
+  else if (config.adminToken) console.log('The admin dashboard can connect to this copy.');
   for (const problem of config.backup.problems) console.error(`Backup settings: ${problem}`);
   console.log(
     config.backup.enabled

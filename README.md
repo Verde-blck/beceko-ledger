@@ -4,6 +4,7 @@ A phone-first ledger for small businesses: who bought what, what they paid, and 
 
 - `brands/README.md` explains brands.
 - `docs/onboarding.md` is the checklist for setting up a new business, including subscriptions.
+- `docs/admin.md` explains the admin dashboard for managing every business from one page.
 
 ## Running it
 

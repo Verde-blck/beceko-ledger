@@ -1,4 +1,5 @@
 import express from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,11 +57,22 @@ function errorHandler(error, req, res, next) {
 }
 
 const LOCKED_ALLOWED = new Set(['/export.csv', '/subscription']);
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
+function tokenMatches(given, expected) {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export function createApp({ config, store, auth, extract }) {
   const brand = config.brand ?? loadBrand();
-  const subscription = () =>
-    subscriptionState(config.subscription ?? {}, periodStarts(config.timeZone).today);
+  const subscription = () => {
+    const { paidUntil, suspended } = store.subscriptionOverrides?.() ?? {};
+    const plan = { ...(config.subscription ?? {}), suspended: Boolean(suspended) };
+    if (paidUntil !== undefined) plan.paidUntil = paidUntil;
+    return subscriptionState(plan, periodStarts(config.timeZone).today);
+  };
   const indexHtml = renderIndex(readFileSync(join(PUBLIC_DIR, 'index.html'), 'utf8'), brand);
 
   const app = express();
@@ -96,6 +108,40 @@ export function createApp({ config, store, auth, extract }) {
   app.delete('/api/session', (req, res) => {
     auth.signOut(res);
     res.status(204).end();
+  });
+
+  const requireOperator = (req, res, next) => {
+    if (!config.adminToken) return res.status(404).json({ error: 'Not found.' });
+    const given = (req.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+    if (!tokenMatches(given, config.adminToken)) return res.status(401).json({ error: 'The admin token is not correct.' });
+    next();
+  };
+
+  const operatorStatus = () => {
+    const overrides = store.subscriptionOverrides();
+    return {
+      appName: brand.appName,
+      brand: brand.id,
+      businessName: config.businessName,
+      version: VERSION,
+      subscription: subscription(),
+      setFrom: overrides.paidUntil !== undefined ? 'dashboard' : config.subscription?.paidUntil ? 'variable' : 'none',
+      backupsOn: Boolean(config.backup?.enabled),
+      ...store.operatorStatus(),
+    };
+  };
+
+  app.get('/api/admin/status', requireOperator, (req, res) => res.json(operatorStatus()));
+
+  app.post('/api/admin/subscription', requireOperator, (req, res) => {
+    const { paidUntil, suspended } = req.body ?? {};
+    if (paidUntil !== undefined && paidUntil !== null && !isValidDate(paidUntil)) {
+      throw new HttpError(400, 'paidUntil must be a date written as YYYY-MM-DD, or null for a copy that never locks.');
+    }
+    if (suspended !== undefined && typeof suspended !== 'boolean') throw new HttpError(400, 'suspended must be true or false.');
+    if (paidUntil === undefined && suspended === undefined) throw new HttpError(400, 'Nothing to change.');
+    store.setSubscription({ paidUntil, suspended });
+    res.json(operatorStatus());
   });
 
   app.use('/api', auth.requireSignIn);
