@@ -1,4 +1,5 @@
 import express from 'express';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAuth } from '../auth.js';
 import { HttpError } from '../errors.js';
@@ -9,6 +10,28 @@ import { businessToken } from './token.js';
 import { dashboardPage, loginPage, notFoundPage, tokenPage } from './views.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../../admin-public', import.meta.url));
+const ICON_DIR = fileURLToPath(new URL('../../brands/iwe-oja', import.meta.url));
+
+const MANIFEST = JSON.stringify(
+  {
+    id: '/',
+    name: 'Ìwé Ọjà admin',
+    short_name: 'Ìwé Ọjà',
+    description: 'Manage every business on Ìwé Ọjà.',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: '#f7f9f8',
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  },
+  null,
+  2,
+);
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -46,6 +69,10 @@ export function createAdminApp({ config, fetchImpl }) {
   });
   app.use(express.urlencoded({ extended: false, limit: '8kb' }));
   app.use(express.static(PUBLIC_DIR, { index: false }));
+  app.get('/manifest.webmanifest', (req, res) => res.type('application/manifest+json').send(MANIFEST));
+  app.get('/favicon.ico', (req, res) => res.sendFile(join(ICON_DIR, 'favicon.ico')));
+  app.get('/icon.svg', (req, res) => res.sendFile(join(ICON_DIR, 'icon.svg')));
+  app.use('/icons', express.static(join(ICON_DIR, 'icons')));
 
   app.get('/login', (req, res) => (auth.isSignedIn(req) ? res.redirect('/') : res.send(loginPage())));
 

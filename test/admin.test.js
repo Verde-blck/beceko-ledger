@@ -149,3 +149,20 @@ test('the dashboard shows every business and extends a subscription', async (t) 
   assert.ok(tokenPage.includes(businessToken(OPERATOR_SECRET, 'beceko')));
   assert.equal((await fetch(`${admin}/businesses/nobody/token`, { headers: { cookie } })).status, 404);
 });
+
+test('the dashboard carries the Ìwé Ọjà icon, even before signing in', async (t) => {
+  const config = loadAdminConfig({ ADMIN_PASSWORD: 'correct horse battery', SESSION_SECRET: 's'.repeat(32), OPERATOR_SECRET });
+  const admin = await listen(t, createAdminApp({ config }));
+  const page = await (await fetch(`${admin}/login`)).text();
+  for (const tag of ['rel="manifest"', 'rel="apple-touch-icon"', 'href="/favicon.ico"', 'href="/icon.svg"']) assert.ok(page.includes(tag), tag);
+
+  const manifest = await (await fetch(`${admin}/manifest.webmanifest`)).json();
+  assert.deepEqual([manifest.name, manifest.short_name, manifest.icons.length], ['Ìwé Ọjà admin', 'Ìwé Ọjà', 3]);
+  for (const path of ['/favicon.ico', '/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png', '/icons/apple-touch-icon.png']) {
+    const response = await fetch(`${admin}${path}`, { redirect: 'manual' });
+    assert.equal(response.status, 200, path);
+  }
+  const { readFileSync } = await import('node:fs');
+  const served = Buffer.from(await (await fetch(`${admin}/icons/icon-512.png`)).arrayBuffer());
+  assert.ok(served.equals(readFileSync(new URL('../brands/iwe-oja/icons/icon-512.png', import.meta.url))), 'serves the Ọ monogram');
+});
